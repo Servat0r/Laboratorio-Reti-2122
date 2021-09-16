@@ -5,10 +5,12 @@ public final class PiCalculator extends Thread {
 	
 	private double accuracy; /* Accuratezza del calcolo */
 	private Thread mainThread; /* Riferimento al thread main */
+	private double lastResult; /* Ultimo risultato calcolato (che il main stamperà) */
 
-	public PiCalculator(double accuracy) {
+	public PiCalculator(double accuracy, Thread mainThread) {
 		this.accuracy = accuracy;
-		this.mainThread = null;
+		this.mainThread = mainThread;
+		this.lastResult = 0.0;
 	}
 	
 	/* 
@@ -22,22 +24,19 @@ public final class PiCalculator extends Thread {
 			System.err.println("Error on setup");
 			return;
 		}
-		double result = 0.0;
+		this.lastResult = 0.0;
 		double factor = 1.0; //Switching +1 <-> -1 at each step
 		double denom = 1.0;
-		while ((Math.abs(Math.PI - result) > this.accuracy) && !this.isInterrupted()) {
-			result += 4.0/(denom * factor);
+		while ((Math.abs(Math.PI - this.lastResult) > this.accuracy) && !this.isInterrupted()) {
+			this.lastResult += 4.0/(denom * factor);
 			denom += 2.0;
 			factor *= -1.0;
 		}
-		if (this.isInterrupted()) System.out.println("Timeout expired");
-		else this.mainThread.interrupt(); 
-		System.out.print("Estimated value of PI: ");
-		System.out.println(result);
+		if (!this.isInterrupted()) this.mainThread.interrupt(); 
 	}
 	
 	/*
-	 * Il thread main aspetta per time millisecondi, dopodiché interrompe il calcolo
+	 * Il thread main aspetta per "time" millisecondi, dopodiché interrompe il calcolo
 	 * in esecuzione da parte del thread worker, venendo eventualmente interrotto durante
 	 * l'attesa dal thread worker che ha effettuato il calcolo con l'accuratezza richiesta.
 	 */
@@ -47,12 +46,15 @@ public final class PiCalculator extends Thread {
 			return;
 		}
 		long time = Long.parseLong(args[1]);
-		PiCalculator t = new PiCalculator(Double.parseDouble(args[0]));
-		t.mainThread = Thread.currentThread();
+		PiCalculator t = new PiCalculator(Double.parseDouble(args[0]), Thread.currentThread());
 		t.start();
 		
-		try { Thread.sleep(time); }
-		catch (InterruptedException e) { }
-		t.interrupt();
+		try {
+			Thread.sleep(time);
+			t.interrupt();
+		} catch (InterruptedException e) { }
+		
+		System.out.print("Estimated value of PI: ");
+		System.out.println(t.lastResult);
 	}
 }
