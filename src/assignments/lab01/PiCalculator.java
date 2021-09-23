@@ -1,4 +1,4 @@
-package assignment01;
+package assignments.lab01;
 import java.lang.Math;
 
 public final class PiCalculator extends Thread {
