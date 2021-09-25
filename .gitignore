@@ -1,4 +1,5 @@
 .settings/
 bin/
+src/other/
 .classpath
 .project
