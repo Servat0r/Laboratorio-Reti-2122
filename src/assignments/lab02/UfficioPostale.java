@@ -88,6 +88,7 @@ public final class UfficioPostale {
 		/* Si aspetta che tutti i clienti siano stati serviti */
 		this.pool.shutdown();
 		return result;
+		
 	}
 	
 	/* Nel seguito assumiamo che da riga di comando siano forniti i seguenti argomenti:
