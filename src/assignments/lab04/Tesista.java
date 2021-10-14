@@ -6,6 +6,7 @@ public final class Tesista extends Utente {
 	private final Laboratorio lab;
 	private int pcNum; //ID del pc che serve al tesista (in [MIN_PC, MAX_PC])
 	private final int k; //Numero di accessi che l'utente deve compiere ( > 0 !)
+	private final int ID;
 	
 	public Tesista(Laboratorio lab, int pcNum) {
 		if (lab == null) throw new NullPointerException();
@@ -13,6 +14,7 @@ public final class Tesista extends Utente {
 		this.lab = lab;
 		this.pcNum = pcNum;
 		this.k = ThreadLocalRandom.current().nextInt(Utente.MIN_K, Utente.MAX_K);
+		this.ID = Utente.nextId();
 	}
 	
 	public int getK() { return k; }
@@ -28,4 +30,6 @@ public final class Tesista extends Utente {
 	}
 	
 	public String str() { return "Tesista"; }
+
+	public int getID() { return this.ID; }
 }

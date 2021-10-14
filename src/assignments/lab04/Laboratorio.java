@@ -5,11 +5,17 @@ import java.util.Arrays;
 public final class Laboratorio {
 	
 	/*
-	 * La sincronizzazione è affidata al monitor dell'oggetto Laboratorio corrente.
-	 * La gestione della precedenza Professori - Tesisti - Studenti è affidata ai metodi privati
+	 * 1. La sincronizzazione è affidata al monitor dell'oggetto Laboratorio corrente.
+	 * 2. Si assume che la precedenza Professori - Tesisti - Studenti sia intesa in modo che ad ogni
+	 * istante t si considerano solo gli utenti non sospesi su una sleep() dopo essere stati nel
+	 * laboratorio e fra questi un professore avrà sempre la precedenza per l'ingresso al laboratorio rispetto
+	 * a tesisti e studenti, e un tesista avrà sempre la precedenza per l'accesso al computer di interesse
+	 * rispetto agli studenti.
+	 * 3. La gestione della precedenza Professori - Tesisti - Studenti è affidata ai metodi privati
 	 * profShouldWait(), thesistShouldWait(), studentShouldWait() e il risveglio dei thread in
 	 * attesa avviene sempre con una notifyAll() se e solo se c'è effettivamente almeno un thread
 	 * in attesa (controllato da profWaitNum, studentWaitNum, thesistWaitNum).
+	 * 4. Si assume che uno studente accetti il computer correntemente libero il cui id sia minimo.
 	 */
 	
 	public static final int MIN_PC = 1; //Minimo id di un computer 

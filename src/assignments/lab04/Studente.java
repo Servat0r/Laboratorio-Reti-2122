@@ -6,6 +6,8 @@ public final class Studente extends Utente {
 	
 	private final Laboratorio lab;
 	private final int k; //Numero di accessi che l'utente deve compiere ( > 0 !)
+	private final int ID;
+	
 	/*
 	 * Id (in [MIN_PC, MAX_PC]) del computer correntemente occupato dall'utente (o MIN_PC - 1
 	 * se non ne occupa nessuno)
@@ -15,12 +17,15 @@ public final class Studente extends Utente {
 	public Studente(Laboratorio lab) {
 		if (lab == null) throw new NullPointerException();
 		this.lab = lab;
+		this.ID = Utente.nextId();
 		this.k = ThreadLocalRandom.current().nextInt(Utente.MIN_K, Utente.MAX_K);
 		this.currentPCNum = Laboratorio.MIN_PC - 1;
 	}
 	
 	public int getK() { return k; }
 	
+	public int getID() { return this.ID; }
+
 	public boolean entra() {
 		try {
 			this.currentPCNum = this.lab.entraStudente();
