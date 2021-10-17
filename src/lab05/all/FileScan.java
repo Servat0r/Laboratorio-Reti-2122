@@ -36,7 +36,7 @@ public final class FileScan {
 		File dir = new File(this.dirpath);
 		byte[] fbytes;
 		if (!dir.isDirectory()) {
-			System.err.printf("'%s' is not a directory", this.dirpath);
+			System.err.printf("'%s' is not a directory%n", this.dirpath);
 			return false;
 		}
 		File files_out = new File(files_out_path);
