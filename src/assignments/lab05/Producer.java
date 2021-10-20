@@ -30,17 +30,16 @@ public final class Producer implements Runnable {
 				this.queue.put(dir);
 				subdirs = dir.listFiles();
 				for (File f : subdirs) {
-					if (f.isDirectory()) {
-						this.queue.put(f);
-						directories.add(f);
-					}
+					if (f.isDirectory()) directories.add(f);
 				}
 			}
 			this.queue.close();
 		} catch (InterruptedException ie) {
 			System.err.println("Interruption occurred for PRODUCER thread");
-			this.queue.close(); //Notifica agli altri thread che è necessario terminare.
+			ie.printStackTrace();
+			this.queue.shutdown(); //Notifica agli altri thread che è necessario terminare.
 			return;
 		}
+		System.out.println("Producer terminating...");
 	}
 }
