@@ -50,7 +50,6 @@ public final class FileTransfer implements Runnable {
 				this.connection;
 				Scanner sc = new Scanner(this.in).useDelimiter(Http.LINE_SEPARATOR);
 			){
-			Thread.sleep(3000);
 			while (sc.hasNext()) {
 				String next = sc.next();
 				if (next.length() == 0) {

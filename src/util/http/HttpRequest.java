@@ -105,18 +105,17 @@ public final class HttpRequest {
 	
 	/**
 	 * @return Una rappresentazione della richiesta HTTP.
+	 * NOTA: La stringa restituita potrebbe NON corrispondere con quella parsata per costruire
+	 * l'oggetto HttpRequest corrente, in quanto dipendente dall'iteratore this.headers.keySet().
 	 */
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
-		sb.append("HTTP Request:\n");
-		sb.append("method = ");
-		sb.append(this.method + "\nversion = ");
-		sb.append(this.version + "\npath = ");
-		sb.append(this.path + "\nheaders = {\n");
-		for (String h : this.headers.keySet()) {
-			sb.append("  " + h + this.headers.get(h) + ",\n");
+		sb.append(this.method + Http.STATE_LINE_SEPARATOR + this.path + Http.STATE_LINE_SEPARATOR
+				+ this.version + Http.LINE_SEPARATOR);
+		for (String s : this.headers.keySet()) {
+			sb.append(new String(s) + new String(this.headers.get(s)) + Http.LINE_SEPARATOR);
 		}
-		sb.append("}\n");
+		sb.append(Http.LINE_SEPARATOR);
 		return sb.toString();
 	}
 }
