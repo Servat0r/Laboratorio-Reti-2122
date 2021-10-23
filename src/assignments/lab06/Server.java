@@ -1,0 +1,79 @@
+package assignments.lab06;
+
+import java.io.*;
+import java.net.*;
+import java.util.concurrent.*;
+import util.ThreadPoolUtils;
+
+/**
+ * Server per il trasferimento di file locali ai client.
+ * @author Salvatore Correnti
+ */
+public final class Server implements AutoCloseable {
+	
+	/*
+	 * PORT = porta di default per l'apertura del server; in caso di fallimento il costruttore lancia una BindException;
+	 * DFL_CORE_THREADS = numero di core threads di deafult;
+	 * MAX_THREADS = massimo numero di thread workers attivi contemporaneamente;
+	 * WAITQUEUE_CAP = capacità della coda di attesa del worker threads pool;
+	 * THREADS_TTL = timeout per la terminazione di un non-core worker thread che non riceve ulteriori richieste;
+	 * THREADS_TTL_UNIT = unità di misura per THREADS_TTL;
+	 * MAX_DELAY_TIME = timeout per la chiusura forzata del server dopo una chiamata a shutdown(), se questa non ha provocato
+	 * ancora la chiusura del server stesso;
+	 * MAX_DELAY_UNIT = unità di misura per MAX_DELAY_TIME.
+	 */
+	public static final int PORT = 10300;
+	public static final int DFL_CORE_THREADS = 4;
+	public static final int MAX_THREADS = 16;
+	public static final int WAITQUEUE_CAP = 32;
+	public static final int THREADS_TTL = 2000;
+	public static final TimeUnit THREADS_TTL_UNIT = TimeUnit.MILLISECONDS;
+	public static final int MAX_DELAY_TIME = 10000;
+	public static final TimeUnit MAX_DELAY_UNIT = TimeUnit.MILLISECONDS;
+	
+	private final ServerSocket listener; /* ListenSocket del server. */
+	private final ExecutorService workers; /* Workers threads per processare le richieste */
+
+	public Server() throws IOException {
+		this.listener = new ServerSocket(PORT);
+		this.workers = Executors.newFixedThreadPool(4);
+	}
+	
+	/**
+	 * Chiude il ListenSocket e il worker threads pool del server.
+	 */
+	public void close() throws Exception {
+		this.listener.close();
+		ThreadPoolUtils.shutdown(this.workers, MAX_DELAY_TIME);
+	}
+	
+	/**
+	 * Incapsula il metodo accept() del ListenSocket.
+	 * @return Un Socket con cui scambiare dati con il client.
+	 * @throws IOException Se lanciata dai metodi utilizzati.
+	 */
+	public Socket accept() throws IOException { return this.listener.accept(); }
+	
+	public void handleRequest() throws IOException {
+		Socket connection = this.accept();
+		System.out.printf("MANAGER: Accepted new connection from '%s'%n", connection.getRemoteSocketAddress());
+		this.workers.execute(new FileTransfer(connection));
+	}
+	
+	/*
+	 * Assumiamo che l'input da riga di comando sia della forma: <nome_programma> [<nome_file> [<contenuto_file>]],
+	 * dove <nome_file> è il nome del file da creare e <contenuto_file> è il contenuto da scrivere nel file.
+	 * Se tali valori non sono forniti, ne vengono usati due di default.
+	 */
+	public static void main(String[] args) throws Exception {
+		try (Server s = new Server(); ){
+			System.out.println("Server is running ...");
+			while (true) s.handleRequest();
+			//System.out.println("MANAGER: exiting");
+		} catch (IOException ioe) {
+			System.err.println("IOException occurred:");
+			ioe.printStackTrace();
+			System.exit(1);
+		}
+	}
+}
