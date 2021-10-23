@@ -20,7 +20,8 @@ public final class Server implements AutoCloseable {
 	 * THREADS_TTL_UNIT = unità di misura per THREADS_TTL;
 	 * MAX_DELAY_TIME = timeout per la chiusura forzata del server dopo una chiamata a shutdown(), se questa non ha provocato
 	 * ancora la chiusura del server stesso;
-	 * MAX_DELAY_UNIT = unità di misura per MAX_DELAY_TIME.
+	 * MAX_DELAY_UNIT = unità di misura per MAX_DELAY_TIME;
+	 * DFL_ROOT_DIR = root directory di default per la ricerca dei file da inviare ai client (path RELATIVO!).
 	 */
 	public static final int PORT = 10300;
 	public static final int DFL_CORE_THREADS = 4;
@@ -30,13 +31,24 @@ public final class Server implements AutoCloseable {
 	public static final TimeUnit THREADS_TTL_UNIT = TimeUnit.MILLISECONDS;
 	public static final int MAX_DELAY_TIME = 10000;
 	public static final TimeUnit MAX_DELAY_UNIT = TimeUnit.MILLISECONDS;
+	public static final String DFL_ROOT_DIR = ".";
 	
 	private final ServerSocket listener; /* ListenSocket del server. */
 	private final ExecutorService workers; /* Workers threads per processare le richieste */
+	private final String rootDirectory; /* Root directory per la ricerca dei file da inviare ai client. */
 
-	public Server() throws IOException {
+	public Server(String rootDirectory) throws IOException {
+		if (rootDirectory == null) throw new NullPointerException();
 		this.listener = new ServerSocket(PORT);
-		this.workers = Executors.newFixedThreadPool(4);
+		this.rootDirectory = rootDirectory;
+		this.workers = new ThreadPoolExecutor(
+			DFL_CORE_THREADS,
+			MAX_THREADS,
+			THREADS_TTL,
+			THREADS_TTL_UNIT,
+			new ArrayBlockingQueue<>(WAITQUEUE_CAP),
+			new ThreadPoolExecutor.AbortPolicy()
+		);
 	}
 	
 	/**
@@ -44,7 +56,7 @@ public final class Server implements AutoCloseable {
 	 */
 	public void close() throws Exception {
 		this.listener.close();
-		ThreadPoolUtils.shutdown(this.workers, MAX_DELAY_TIME);
+		ThreadPoolUtils.shutdown(this.workers, MAX_DELAY_TIME, MAX_DELAY_UNIT);
 	}
 	
 	/**
@@ -55,9 +67,12 @@ public final class Server implements AutoCloseable {
 	public Socket accept() throws IOException { return this.listener.accept(); }
 	
 	public void handleRequest() throws IOException {
-		Socket connection = this.accept();
-		System.out.printf("MANAGER: Accepted new connection from '%s'%n", connection.getRemoteSocketAddress());
-		this.workers.execute(new FileTransfer(connection));
+		Socket connection = null;
+		try {
+			connection = this.accept();
+			System.out.printf("MANAGER: Accepted new connection from '%s'%n", connection.getRemoteSocketAddress());
+			this.workers.execute(new FileTransfer(connection, this.rootDirectory));
+		} catch (RejectedExecutionException ree) { connection.close(); }
 	}
 	
 	/*
@@ -66,10 +81,10 @@ public final class Server implements AutoCloseable {
 	 * Se tali valori non sono forniti, ne vengono usati due di default.
 	 */
 	public static void main(String[] args) throws Exception {
-		try (Server s = new Server(); ){
+		String rootDirectory = (args.length > 0 ? args[0] : DFL_ROOT_DIR);
+		try (Server s = new Server(rootDirectory); ){
 			System.out.println("Server is running ...");
 			while (true) s.handleRequest();
-			//System.out.println("MANAGER: exiting");
 		} catch (IOException ioe) {
 			System.err.println("IOException occurred:");
 			ioe.printStackTrace();

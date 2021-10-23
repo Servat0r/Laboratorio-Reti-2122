@@ -10,6 +10,7 @@ public final class FileTransfer implements Runnable {
 	private final Socket connection; /* Socket di connessione col client. */
 	private InputStream in; /* InputStream da cui leggere la richiesta. */
 	private OutputStream out; /* OutputStream su cui scrivere al risposta. */
+	private final String rootDirectory; /* Root directory in cui cercare i file da inviare ai client. */
 
 	/**
 	 * Utility per settare opportunamente i campi fondamentali (code, version, body, header "Connection")
@@ -30,11 +31,12 @@ public final class FileTransfer implements Runnable {
 		return httpRes;
 	}
 	
-	public FileTransfer(Socket connection) throws IOException {
-		if (connection == null) throw new NullPointerException();
+	public FileTransfer(Socket connection, String rootDirectory) throws IOException {
+		if (connection == null || rootDirectory == null) throw new NullPointerException();
 		this.connection = connection;
 		this.in = connection.getInputStream();
 		this.out = connection.getOutputStream();
+		this.rootDirectory = rootDirectory;
 	}
 	
 	/**
@@ -66,7 +68,7 @@ public final class FileTransfer implements Runnable {
 				httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP11, "close", "Error 400: bad request".getBytes());
 			} else {
 				String filename = httpReq.getPath();
-				File file = new File("." + filename);
+				File file = new File(this.rootDirectory + filename);
 				try (FileInputStream fstream = new FileInputStream(file)) {
 					byte[] fcontent = fstream.readAllBytes();
 					String contentLength = Integer.toString(fcontent.length);
