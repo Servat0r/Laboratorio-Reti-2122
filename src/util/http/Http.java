@@ -13,6 +13,7 @@ public class Http {
 	/* Costanti per codici di risposta comuni. */
 	public static final int OK = 200;
 	public static final int BAD_REQUEST = 400;
+	public static final int FORBIDDEN = 403;
 	public static final int NOT_FOUND = 404;
 	public static final int INT_SERVER_ERROR = 500;
 	
@@ -43,6 +44,7 @@ public class Http {
 	public static final int[] CODES = {
 		OK,
 		BAD_REQUEST,
+		FORBIDDEN,
 		NOT_FOUND,
 		INT_SERVER_ERROR,
 	};
@@ -51,6 +53,7 @@ public class Http {
 	public static final String[] MESSAGES = {
 		"OK",
 		"Bad Request",
+		"Forbidden",
 		"Not Found",
 		"Internal Server Error",
 	};

@@ -70,7 +70,6 @@ public final class Server implements AutoCloseable {
 		Socket connection = null;
 		try {
 			connection = this.accept();
-			System.out.printf("MANAGER: Accepted new connection from '%s'%n", connection.getRemoteSocketAddress());
 			this.workers.execute(new FileTransfer(connection, this.rootDirectory));
 		} catch (RejectedExecutionException ree) { connection.close(); }
 	}

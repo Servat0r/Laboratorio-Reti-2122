@@ -52,6 +52,7 @@ public final class FileTransfer implements Runnable {
 				this.connection;
 				Scanner sc = new Scanner(this.in).useDelimiter(Http.LINE_SEPARATOR);
 			){
+			/* Recupero della richiesta dallo stream di input */
 			while (sc.hasNext()) {
 				String next = sc.next();
 				if (next.length() == 0) {
@@ -62,34 +63,50 @@ public final class FileTransfer implements Runnable {
 			}
 			if (!doubleCRLF) throw new InvalidHttpRequestException();
 			String request = sb.toString();
-			System.out.println("RECEIVED REQUEST:\n" + request);
+			synchronized (System.out) {
+				System.out.printf("Accepted new connection from '%s'%n", connection.getRemoteSocketAddress());
+				System.out.println("RECEIVED REQUEST:\n" + request);
+			}
+			
 			HttpRequest httpReq = new HttpRequest(request);
-			if (!httpReq.getMethod().equals("GET")) {
-				httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP11, "close", "Error 400: bad request".getBytes());
+			if (!httpReq.getMethod().equals("GET")) { /* La richiesta non è di tipo "GET" */
+				httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, "close", "Error 400: bad request".getBytes());
 			} else {
 				String filename = httpReq.getPath();
 				File file = new File(this.rootDirectory + filename);
-				try (FileInputStream fstream = new FileInputStream(file)) {
-					byte[] fcontent = fstream.readAllBytes();
-					String contentLength = Integer.toString(fcontent.length);
-					String contentType = URLConnection.guessContentTypeFromName(filename);
-					if (contentType == null) { //Cannot determine MIME-type
-						httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP11, "close", null);
-					} else {
-						httpRes = makeResponse(Http.OK, Http.HTTP11, "close", fcontent);
-						httpRes.setHeader("Content-Type", contentType);
-						httpRes.setHeader("Content-Length", contentLength);
+				if (!file.isFile()) { /* Non è stato richiesto un file regolare */
+					httpRes = makeResponse(Http.FORBIDDEN, Http.HTTP10, "close", "Error 403: resource access denied".getBytes());
+				} else {
+					try (FileInputStream fstream = new FileInputStream(file)) {
+						String contentLength = Long.toString(file.length());
+						String contentType = URLConnection.guessContentTypeFromName(filename);
+						int length = (int)file.length();
+						byte[] fcontent = new byte[length];
+						if (contentType == null) { /* Non è possibile determinare il MIME-type */
+							httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, "close", null);
+						} else if (file.length() > Integer.MAX_VALUE) {
+							/* Il file è troppo lungo per allocare un byte-array di questa dimensione */
+							httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, "close", null);
+						} else if (fstream.read(fcontent) != length) { /* Lettura scorretta dallo stream di input */
+								httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10,
+										"close", "Error 500: internal server error".getBytes());
+						} else { /* Tutto ok */
+							httpRes = makeResponse(Http.OK, Http.HTTP10, "close", fcontent);
+							httpRes.setHeader("Content-Type", contentType);
+							httpRes.setHeader("Content-Length", contentLength);
+						}
+					} catch (FileNotFoundException fnfe) { /* File non esistente; generata dal costruttore di fstream */
+						httpRes = makeResponse(Http.NOT_FOUND, Http.HTTP10, "close", "Error 404: resource not found".getBytes());
+					} catch (IOException ioe) { /* Generata da fstream.read(fcontent) */
+						httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, "close", "Error 500: internal server error".getBytes());
 					}
-				} catch (FileNotFoundException fnfe) { //Generata dal costruttore di fstream
-					httpRes = makeResponse(Http.NOT_FOUND, Http.HTTP11, "close", "Error 404: resource not found".getBytes());
-				} catch (IOException ioe) { //Generata da readAllBytes()
-					httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP11, "close", "Error 500: internal server error".getBytes());
 				}
 			}
+			
 			byte[] response = httpRes.getByteResponse();
 			this.out.write(response); //Can throw IOException => fatal error, since we CANNOT communicate with client!
 		} catch (InvalidHttpRequestException ihre) { //Generata dal costruttore di httpReq o da readRequest()
-			httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP11, "close", "Error 400: bad request".getBytes());
+			httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, "close", "Error 400: bad request".getBytes());
 		} catch (Exception e) {
 			System.out.printf("WORKERS POOL: Exception thrown when handling request%n");
 			e.printStackTrace();
