@@ -33,14 +33,23 @@ public final class Server implements AutoCloseable {
 	public static final TimeUnit MAX_DELAY_UNIT = TimeUnit.MILLISECONDS;
 	public static final String DFL_ROOT_DIR = ".";
 	
-	private final ServerSocket listener; /* ListenSocket del server. */
+	public static final int READY = 0;
+	public static final int RUNNING = 1;
+	public static final int CLOSED = 2;
+	
+	private ServerSocket listener; /* ListenSocket del server. */
 	private final ExecutorService workers; /* Workers threads per processare le richieste */
 	private final String rootDirectory; /* Root directory per la ricerca dei file da inviare ai client. */
+	private int state;
+	
+	private synchronized void setState(int state) { this.state = state; }
+	private synchronized int getState() { return this.state; }
 
 	public Server(String rootDirectory) throws IOException {
 		if (rootDirectory == null) throw new NullPointerException();
 		this.listener = new ServerSocket(PORT);
 		this.rootDirectory = rootDirectory;
+		this.state = READY;
 		this.workers = new ThreadPoolExecutor(
 			DFL_CORE_THREADS,
 			MAX_THREADS,
@@ -54,40 +63,37 @@ public final class Server implements AutoCloseable {
 	/**
 	 * Chiude il ListenSocket e il worker threads pool del server.
 	 */
-	public void close() throws Exception {
+	public synchronized void close() throws Exception {
 		this.listener.close();
 		ThreadPoolUtils.shutdown(this.workers, MAX_DELAY_TIME, MAX_DELAY_UNIT);
+		this.setState(CLOSED);
 	}
 	
 	/**
 	 * Incapsula il metodo accept() del ListenSocket.
-	 * @return Un Socket con cui scambiare dati con il client.
-	 * @throws IOException Se lanciata dai metodi utilizzati.
+	 * @return Un Socket con cui scambiare dati con il client, null in caso di errore di I/O.
 	 */
-	public Socket accept() throws IOException { return this.listener.accept(); }
+	public Socket accept() {
+		try {
+			Socket result = this.listener.accept();
+			return result;
+		} catch (IOException ioe) { return null; }
+	}
 	
-	public void handleRequest() throws IOException {
-		Socket connection = null;
+	public synchronized void handleRequest() throws IOException {
+		Socket connection = null; 
 		try {
 			connection = this.accept();
 			this.workers.execute(new FileTransfer(connection, this.rootDirectory));
 		} catch (RejectedExecutionException ree) { connection.close(); }
 	}
 	
-	/*
-	 * Assumiamo che l'input da riga di comando sia della forma: <nome_programma> [<nome_file> [<contenuto_file>]],
-	 * dove <nome_file> è il nome del file da creare e <contenuto_file> è il contenuto da scrivere nel file.
-	 * Se tali valori non sono forniti, ne vengono usati due di default.
-	 */
-	public static void main(String[] args) throws Exception {
-		String rootDirectory = (args.length > 0 ? args[0] : DFL_ROOT_DIR);
-		try (Server s = new Server(rootDirectory); ){
-			System.out.println("Server is running ...");
-			while (true) s.handleRequest();
+	public void mainloop() throws IOException {
+		this.setState(RUNNING);
+		try {
+			while (true) this.handleRequest();
 		} catch (IOException ioe) {
-			System.err.println("IOException occurred:");
-			ioe.printStackTrace();
-			System.exit(1);
+			if (this.getState() != CLOSED) throw ioe;
 		}
 	}
 }

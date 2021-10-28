@@ -1,5 +1,6 @@
 package util.http;
 
+import java.io.*;
 import java.util.*;
 
 /**
@@ -15,16 +16,22 @@ public final class HttpResponse {
 	private int code; /* Codice di risposta. */
 	private String message; /* Messaggio associato al codice. */
 	private Map<String, String> headers; /* HashMap di coppie <nome header, valore header>. */
-	private byte[] body; /* Corpo del messaggio, espresso in raw bytes. */
-
-	public HttpResponse() {
-		this.version = null;
-		this.code = 0;
-		this.message = null;
+	private final InputStream body; /* Corpo del messaggio, espresso in raw bytes. */
+	
+	public HttpResponse(int code, String version, byte[] body) {
+		this.setVersion(version);
+		this.setCode(code);
 		this.headers = new HashMap<String, String>();
-		this.body = null;
+		this.body = new ByteArrayInputStream(body);
 	}
-
+	
+	public HttpResponse(int code, String version, InputStream body) {
+		this.setVersion(version);
+		this.setCode(code);
+		this.headers = new HashMap<String, String>();
+		this.body = body;
+	}
+	
 	public final String getVersion() { return new String(version); }
 	
 	public final void setVersion(String version) {
@@ -64,11 +71,28 @@ public final class HttpResponse {
 		return new String(this.headers.get(header));
 	}
 	
-	public byte[] getBody() { return this.body; }
-	
-	public void setBody(byte[] body) {
-		if (body == null) throw new NullPointerException();
-		this.body = body;
+	public InputStream getBody() { return this.body; }
+		
+	public void send(OutputStream out) throws IOException {
+		if (out == null) throw new NullPointerException();
+		StringBuilder sb = new StringBuilder();
+		/* Linea di stato */
+		sb.append(this.version + Http.STATE_LINE_SEPARATOR + this.code
+				+ Http.STATE_LINE_SEPARATOR + this.message
+				+ Http.LINE_SEPARATOR);
+		/* Linee di intestazione */
+		for (String h : this.headers.keySet()) {
+			sb.append(h + Http.HEADER_NAME_VALUE_SEPARATOR
+					+ this.headers.get(h)
+					+ Http.LINE_SEPARATOR);
+		}
+		sb.append(Http.LINE_SEPARATOR);
+		out.write(sb.toString().getBytes());
+		if (this.body != null) {
+			int c;
+			while ( (c = this.body.read()) != -1) out.write(c);
+		}
+		this.body.close();
 	}
 	
 	/**
@@ -76,13 +100,13 @@ public final class HttpResponse {
 	 * per poter essere trasferito su un OutputStream.
 	 * @return Un array di bytes corrispondente al messaggio HTTP.
 	 */
-	public byte[] getByteResponse() {
+/*	public byte[] getByteResponse() {
 		StringBuilder sb = new StringBuilder();
-		/* Linea di stato */
+		// Linea di stato
 		sb.append(this.version + Http.STATE_LINE_SEPARATOR + this.code
 				+ Http.STATE_LINE_SEPARATOR + this.message
 				+ Http.LINE_SEPARATOR);
-		/* Linee di intestazione */
+		// Linee di intestazione
 		for (String h : this.headers.keySet()) {
 			sb.append(h + Http.HEADER_NAME_VALUE_SEPARATOR
 					+ this.headers.get(h)
@@ -97,5 +121,5 @@ public final class HttpResponse {
 		for (int i = 0; i < hlen; i++) message[current++] = hbytes[i];
 		for (int i = 0; i < blen; i++) message[current++] = this.body[i];
 		return message;
-	}
+	} */
 }

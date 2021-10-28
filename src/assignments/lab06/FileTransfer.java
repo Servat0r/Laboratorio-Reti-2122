@@ -3,6 +3,7 @@ package assignments.lab06;
 import java.io.*;
 import java.net.*;
 import java.util.Scanner;
+
 import util.http.*;
 
 public final class FileTransfer implements Runnable {
@@ -22,13 +23,17 @@ public final class FileTransfer implements Runnable {
 	 * @return Un oggetto HttpResponse con i campi opportunamente assegnati.
 	 */
 	private static HttpResponse makeResponse(int code, String version, String conn, byte[] body) {
-		HttpResponse httpRes = new HttpResponse();
-		httpRes.setCode(code);
-		httpRes.setVersion(version);
+		HttpResponse httpRes = new HttpResponse(code, version, body);
 		httpRes.setHeader("Server", "localhost");
 		if (conn != null) httpRes.setHeader("Connection", conn);
-		if (body != null) httpRes.setBody(body);
 		return httpRes;
+	}
+		
+	private boolean send(HttpResponse response) {
+		try {
+			response.send(this.out);
+			return true;
+		} catch (Exception e) { return false; }
 	}
 	
 	public FileTransfer(Socket connection, String rootDirectory) throws IOException {
@@ -44,14 +49,14 @@ public final class FileTransfer implements Runnable {
 	 * di risposta al client.
 	 */
 	public void run() {
-		HttpResponse httpRes;
+		HttpResponse httpRes = null;
 		StringBuilder sb = new StringBuilder();
 		boolean doubleCRLF = false; /* Flag per indicare l'uscita dal while dopo aver incontrato un doppio CRLF
 		(se NON avviene certamente la richiesta HTTP NON è in un formato valido!) */
-		try(
-				this.connection;
-				Scanner sc = new Scanner(this.in).useDelimiter(Http.LINE_SEPARATOR);
-			){
+		try (
+			this.connection;
+			Scanner sc = new Scanner(this.in).useDelimiter(Http.LINE_SEPARATOR);
+		){
 			/* Recupero della richiesta dallo stream di input */
 			while (sc.hasNext()) {
 				String next = sc.next();
@@ -62,53 +67,48 @@ public final class FileTransfer implements Runnable {
 				} else sb.append(next + Http.LINE_SEPARATOR);
 			}
 			if (!doubleCRLF) throw new InvalidHttpRequestException();
+			//while (this.in.available() > 0) { sb.append((char)this.in.read()); }
 			String request = sb.toString();
-			synchronized (System.out) {
-				System.out.printf("Accepted new connection from '%s'%n", connection.getRemoteSocketAddress());
-				System.out.println("RECEIVED REQUEST:\n" + request);
-			}
-			
+			System.out.printf("Accepted new connection from '%s'%nRECEIVED REQUEST:%n%s",
+				connection.getRemoteSocketAddress(), request);
 			HttpRequest httpReq = new HttpRequest(request);
 			if (!httpReq.getMethod().equals("GET")) { /* La richiesta non è di tipo "GET" */
-				httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, "close", "Error 400: bad request".getBytes());
+				httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, Http.CONN_CLOSE, "Error 400: bad request".getBytes());
 			} else {
 				String filename = httpReq.getPath();
 				File file = new File(this.rootDirectory + filename);
-				if (!file.isFile()) { /* Non è stato richiesto un file regolare */
-					httpRes = makeResponse(Http.FORBIDDEN, Http.HTTP10, "close", "Error 403: resource access denied".getBytes());
+				if (file.isDirectory()) { /* Non è stato richiesto un file regolare */
+					httpRes = makeResponse(Http.FORBIDDEN, Http.HTTP10, Http.CONN_CLOSE, "Error 403: resource access denied".getBytes());
 				} else {
-					try (FileInputStream fstream = new FileInputStream(file)) {
+					try (InputStream fstream = new FileInputStream(file)) {
 						String contentLength = Long.toString(file.length());
 						String contentType = URLConnection.guessContentTypeFromName(filename);
-						int length = (int)file.length();
-						byte[] fcontent = new byte[length];
 						if (contentType == null) { /* Non è possibile determinare il MIME-type */
-							httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, "close", null);
-						} else if (file.length() > Integer.MAX_VALUE) {
-							/* Il file è troppo lungo per allocare un byte-array di questa dimensione */
-							httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, "close", null);
-						} else if (fstream.read(fcontent) != length) { /* Lettura scorretta dallo stream di input */
-								httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10,
-										"close", "Error 500: internal server error".getBytes());
+							httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, Http.CONN_CLOSE, null);
 						} else { /* Tutto ok */
-							httpRes = makeResponse(Http.OK, Http.HTTP10, "close", fcontent);
+							httpRes = new HttpResponse(Http.OK, Http.HTTP10, fstream);
+							httpRes.setHeader("Server", "localhost");
+							httpRes.setHeader("Connection", Http.CONN_CLOSE);
 							httpRes.setHeader("Content-Type", contentType);
 							httpRes.setHeader("Content-Length", contentLength);
 						}
 					} catch (FileNotFoundException fnfe) { /* File non esistente; generata dal costruttore di fstream */
-						httpRes = makeResponse(Http.NOT_FOUND, Http.HTTP10, "close", "Error 404: resource not found".getBytes());
-					} catch (IOException ioe) { /* Generata da fstream.read(fcontent) */
-						httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, "close", "Error 500: internal server error".getBytes());
+						httpRes = makeResponse(Http.NOT_FOUND, Http.HTTP10, Http.CONN_CLOSE, "Error 404: resource not found".getBytes());
 					}
 				}
 			}
-			
-			byte[] response = httpRes.getByteResponse();
-			this.out.write(response); //Can throw IOException => fatal error, since we CANNOT communicate with client!
-		} catch (InvalidHttpRequestException ihre) { //Generata dal costruttore di httpReq o da readRequest()
-			httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, "close", "Error 400: bad request".getBytes());
-		} catch (Exception e) {
-			System.out.printf("WORKERS POOL: Exception thrown when handling request%n");
+			if (!this.send(httpRes)) {
+				System.err.println("WORKERS POOL: Error when sending response");
+				System.exit(1);
+			}
+		} catch (InvalidHttpRequestException ihre) { /* Generata dai metodi di HttpRequest */
+			httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, Http.CONN_CLOSE, "Error 400: bad request".getBytes());
+			if (!this.send(httpRes)) {
+				System.err.println("WORKERS POOL: Error when sending response");
+				System.exit(1);
+			}
+		} catch (Exception e) { /* Altre eccezioni */
+			System.out.println("WORKERS POOL: Exception thrown when handling request");
 			e.printStackTrace();
 			System.exit(1);
 		}

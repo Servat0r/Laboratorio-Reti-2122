@@ -22,6 +22,10 @@ public class Http {
 	public static final String HTTP10 = "HTTP/1.0";
 	public static final String HTTP11 = "HTTP/1.1";
 	
+	/* Costanti per connessione */
+	public static final String CONN_ALIVE = "keep-alive";
+	public static final String CONN_CLOSE = "close";
+	
 	/* Metodi accettati. */
 	public static final String[] METHODS = {
 		"GET",
