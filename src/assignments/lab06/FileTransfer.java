@@ -29,11 +29,24 @@ public final class FileTransfer implements Runnable {
 		return httpRes;
 	}
 		
-	private boolean send(HttpResponse response) {
+	private void send(HttpResponse response) {
 		try {
+			Thread.sleep(4000);
 			response.send(this.out);
-			return true;
-		} catch (Exception e) { return false; }
+		} catch (Exception e) {
+			System.err.println("WORKERS POOL: Error when sending response");
+			System.exit(1);
+		}
+	}
+	
+	private void close(HttpResponse response) {
+		try {
+			response.close();
+		} catch (Exception e) {
+			System.out.println("WORKERS POOL: Exception thrown when closing output stream");
+			e.printStackTrace();
+			System.exit(1);			
+		}
 	}
 	
 	public FileTransfer(Socket connection, String rootDirectory) throws IOException {
@@ -73,40 +86,39 @@ public final class FileTransfer implements Runnable {
 				connection.getRemoteSocketAddress(), request);
 			HttpRequest httpReq = new HttpRequest(request);
 			if (!httpReq.getMethod().equals("GET")) { /* La richiesta non è di tipo "GET" */
-				httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, Http.CONN_CLOSE, "Error 400: bad request".getBytes());
+				httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP11, Http.CONN_CLOSE, "Error 400: bad request".getBytes());
+				this.send(httpRes);
 			} else {
 				String filename = httpReq.getPath();
 				File file = new File(this.rootDirectory + filename);
 				if (file.isDirectory()) { /* Non è stato richiesto un file regolare */
-					httpRes = makeResponse(Http.FORBIDDEN, Http.HTTP10, Http.CONN_CLOSE, "Error 403: resource access denied".getBytes());
+					httpRes = makeResponse(Http.FORBIDDEN, Http.HTTP11, Http.CONN_CLOSE, "Error 403: resource access denied".getBytes());
+					this.send(httpRes);
 				} else {
-					try (InputStream fstream = new FileInputStream(file)) {
+					try {
 						String contentLength = Long.toString(file.length());
 						String contentType = URLConnection.guessContentTypeFromName(filename);
 						if (contentType == null) { /* Non è possibile determinare il MIME-type */
-							httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP10, Http.CONN_CLOSE, null);
+							httpRes = makeResponse(Http.INT_SERVER_ERROR, Http.HTTP11, Http.CONN_CLOSE, null);
 						} else { /* Tutto ok */
-							httpRes = new HttpResponse(Http.OK, Http.HTTP10, fstream);
+							httpRes = new HttpResponse(Http.OK, Http.HTTP11, new FileInputStream(file));
 							httpRes.setHeader("Server", "localhost");
 							httpRes.setHeader("Connection", Http.CONN_CLOSE);
 							httpRes.setHeader("Content-Type", contentType);
 							httpRes.setHeader("Content-Length", contentLength);
 						}
+						this.send(httpRes);
 					} catch (FileNotFoundException fnfe) { /* File non esistente; generata dal costruttore di fstream */
-						httpRes = makeResponse(Http.NOT_FOUND, Http.HTTP10, Http.CONN_CLOSE, "Error 404: resource not found".getBytes());
+						httpRes = makeResponse(Http.NOT_FOUND, Http.HTTP11, Http.CONN_CLOSE, "Error 404: resource not found".getBytes());
+						this.send(httpRes);
 					}
 				}
 			}
-			if (!this.send(httpRes)) {
-				System.err.println("WORKERS POOL: Error when sending response");
-				System.exit(1);
-			}
+			this.close(httpRes);
 		} catch (InvalidHttpRequestException ihre) { /* Generata dai metodi di HttpRequest */
-			httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP10, Http.CONN_CLOSE, "Error 400: bad request".getBytes());
-			if (!this.send(httpRes)) {
-				System.err.println("WORKERS POOL: Error when sending response");
-				System.exit(1);
-			}
+			httpRes = makeResponse(Http.BAD_REQUEST, Http.HTTP11, Http.CONN_CLOSE, "Error 400: bad request".getBytes());
+			this.send(httpRes);
+			this.close(httpRes);
 		} catch (Exception e) { /* Altre eccezioni */
 			System.out.println("WORKERS POOL: Exception thrown when handling request");
 			e.printStackTrace();

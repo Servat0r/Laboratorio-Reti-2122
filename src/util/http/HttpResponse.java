@@ -10,19 +10,21 @@ import java.util.*;
  * consente ai messaggi di risposta di avere un corpo.
  * @author Salvatore Correnti
  */
-public final class HttpResponse {
-		
+public final class HttpResponse implements AutoCloseable {
+	
+	public static final int DFL_BUF_LENGTH = 1024;
+	
 	private String version; /* Versione HTTP del messaggio. */
 	private int code; /* Codice di risposta. */
 	private String message; /* Messaggio associato al codice. */
 	private Map<String, String> headers; /* HashMap di coppie <nome header, valore header>. */
-	private final InputStream body; /* Corpo del messaggio, espresso in raw bytes. */
+	private InputStream body; /* Corpo del messaggio, espresso in raw bytes. */
 	
 	public HttpResponse(int code, String version, byte[] body) {
 		this.setVersion(version);
 		this.setCode(code);
 		this.headers = new HashMap<String, String>();
-		this.body = new ByteArrayInputStream(body);
+		this.body = new ByteArrayInputStream((body != null ? body : new byte[0]));
 	}
 	
 	public HttpResponse(int code, String version, InputStream body) {
@@ -76,6 +78,7 @@ public final class HttpResponse {
 	public void send(OutputStream out) throws IOException {
 		if (out == null) throw new NullPointerException();
 		StringBuilder sb = new StringBuilder();
+		byte[] content = new byte[DFL_BUF_LENGTH];
 		/* Linea di stato */
 		sb.append(this.version + Http.STATE_LINE_SEPARATOR + this.code
 				+ Http.STATE_LINE_SEPARATOR + this.message
@@ -89,37 +92,19 @@ public final class HttpResponse {
 		sb.append(Http.LINE_SEPARATOR);
 		out.write(sb.toString().getBytes());
 		if (this.body != null) {
-			int c;
-			while ( (c = this.body.read()) != -1) out.write(c);
+			int c = 0;
+			while (true) {
+				c = this.body.read(content, 0, DFL_BUF_LENGTH);
+				if (c == -1) break;
+				out.write(content, 0, c);
+			}
 		}
-		this.body.close();
 	}
 	
-	/**
-	 * Restituisce l'intero messaggio HTTP (stato + headers + corpo del messaggio) come array di bytes
-	 * per poter essere trasferito su un OutputStream.
-	 * @return Un array di bytes corrispondente al messaggio HTTP.
-	 */
-/*	public byte[] getByteResponse() {
-		StringBuilder sb = new StringBuilder();
-		// Linea di stato
-		sb.append(this.version + Http.STATE_LINE_SEPARATOR + this.code
-				+ Http.STATE_LINE_SEPARATOR + this.message
-				+ Http.LINE_SEPARATOR);
-		// Linee di intestazione
-		for (String h : this.headers.keySet()) {
-			sb.append(h + Http.HEADER_NAME_VALUE_SEPARATOR
-					+ this.headers.get(h)
-					+ Http.LINE_SEPARATOR);
+	public void close() throws Exception {
+		if (this.body != null){
+			this.body.close();
+			this.body = null;
 		}
-		sb.append(Http.LINE_SEPARATOR);
-		byte[] hbytes =  sb.toString().getBytes();
-		int hlen = hbytes.length;
-		int blen = (this.body != null ? this.body.length : 0);
-		byte[] message = new byte[hlen + blen];
-		int current = 0;
-		for (int i = 0; i < hlen; i++) message[current++] = hbytes[i];
-		for (int i = 0; i < blen; i++) message[current++] = this.body[i];
-		return message;
-	} */
+	}
 }

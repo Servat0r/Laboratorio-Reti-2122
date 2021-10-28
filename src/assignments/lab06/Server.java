@@ -33,23 +33,15 @@ public final class Server implements AutoCloseable {
 	public static final TimeUnit MAX_DELAY_UNIT = TimeUnit.MILLISECONDS;
 	public static final String DFL_ROOT_DIR = ".";
 	
-	public static final int READY = 0;
-	public static final int RUNNING = 1;
-	public static final int CLOSED = 2;
 	
 	private ServerSocket listener; /* ListenSocket del server. */
 	private final ExecutorService workers; /* Workers threads per processare le richieste */
 	private final String rootDirectory; /* Root directory per la ricerca dei file da inviare ai client. */
-	private int state;
 	
-	private synchronized void setState(int state) { this.state = state; }
-	private synchronized int getState() { return this.state; }
-
 	public Server(String rootDirectory) throws IOException {
 		if (rootDirectory == null) throw new NullPointerException();
 		this.listener = new ServerSocket(PORT);
 		this.rootDirectory = rootDirectory;
-		this.state = READY;
 		this.workers = new ThreadPoolExecutor(
 			DFL_CORE_THREADS,
 			MAX_THREADS,
@@ -63,10 +55,9 @@ public final class Server implements AutoCloseable {
 	/**
 	 * Chiude il ListenSocket e il worker threads pool del server.
 	 */
-	public synchronized void close() throws Exception {
+	public void close() throws Exception {
 		this.listener.close();
 		ThreadPoolUtils.shutdown(this.workers, MAX_DELAY_TIME, MAX_DELAY_UNIT);
-		this.setState(CLOSED);
 	}
 	
 	/**
@@ -74,26 +65,28 @@ public final class Server implements AutoCloseable {
 	 * @return Un Socket con cui scambiare dati con il client, null in caso di errore di I/O.
 	 */
 	public Socket accept() {
+		if (this.listener.isClosed()) return null;
 		try {
 			Socket result = this.listener.accept();
 			return result;
 		} catch (IOException ioe) { return null; }
 	}
 	
-	public synchronized void handleRequest() throws IOException {
+	public boolean handleRequest() throws IOException {
 		Socket connection = null; 
 		try {
 			connection = this.accept();
+			if (connection == null) return false; //Listen Socket closed
 			this.workers.execute(new FileTransfer(connection, this.rootDirectory));
-		} catch (RejectedExecutionException ree) { connection.close(); }
+			return true;
+		} catch (RejectedExecutionException ree) { //For example if thread pool has been shutdown
+			if (connection.isClosed()) System.out.println("PIPPO");
+			connection.close();
+			return false;
+		}
 	}
 	
 	public void mainloop() throws IOException {
-		this.setState(RUNNING);
-		try {
-			while (true) this.handleRequest();
-		} catch (IOException ioe) {
-			if (this.getState() != CLOSED) throw ioe;
-		}
+		while (this.handleRequest()) { }
 	}
 }

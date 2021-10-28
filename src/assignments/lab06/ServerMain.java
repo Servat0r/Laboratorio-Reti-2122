@@ -12,6 +12,7 @@ public final class ServerMain {
 	public static void main(String[] args) throws Exception {
 		String rootDirectory = (args.length > 0 ? args[0] : Server.DFL_ROOT_DIR);
 		try (Server s = new Server(rootDirectory); ){
+			CtrlCHandler c = new CtrlCHandler(s);
 			System.out.println("Server is running ...");
 			s.mainloop();
 		} catch (IOException ioe) {
