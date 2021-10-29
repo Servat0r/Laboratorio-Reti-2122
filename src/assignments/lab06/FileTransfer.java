@@ -30,19 +30,16 @@ public final class FileTransfer implements Runnable {
 	}
 		
 	private void send(HttpResponse response) {
-		try {
-			Thread.sleep(4000);
-			response.send(this.out);
-		} catch (Exception e) {
+		try { response.send(this.out); }
+		catch (Exception e) {
 			System.err.println("WORKERS POOL: Error when sending response");
 			System.exit(1);
 		}
 	}
 	
 	private void close(HttpResponse response) {
-		try {
-			response.close();
-		} catch (Exception e) {
+		try { response.close(); }
+		catch (Exception e) {
 			System.out.println("WORKERS POOL: Exception thrown when closing output stream");
 			e.printStackTrace();
 			System.exit(1);			

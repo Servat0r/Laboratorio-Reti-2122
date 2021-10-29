@@ -3,6 +3,7 @@ package assignments.lab06;
 import java.io.*;
 import java.net.*;
 import java.util.concurrent.*;
+
 import util.ThreadPoolUtils;
 
 /**
@@ -29,18 +30,25 @@ public final class Server implements AutoCloseable {
 	public static final int WAITQUEUE_CAP = 32;
 	public static final int THREADS_TTL = 2000;
 	public static final TimeUnit THREADS_TTL_UNIT = TimeUnit.MILLISECONDS;
-	public static final int MAX_DELAY_TIME = 10000;
+	public static final int MAX_DELAY_TIME = 2000;
 	public static final TimeUnit MAX_DELAY_UNIT = TimeUnit.MILLISECONDS;
 	public static final String DFL_ROOT_DIR = ".";
+	public static final int ACCEPT_TIMEOUT = 3000;
 	
 	
 	private ServerSocket listener; /* ListenSocket del server. */
 	private final ExecutorService workers; /* Workers threads per processare le richieste */
 	private final String rootDirectory; /* Root directory per la ricerca dei file da inviare ai client. */
+	private boolean closing; /* Flag per segnalare un'avvenuta chiamata del metodo close() per la terminazione del server */
+	
+	private synchronized void setClosing(boolean value) { this.closing = value; }
+	private synchronized boolean isClosing() { return this.closing; }
 	
 	public Server(String rootDirectory) throws IOException {
 		if (rootDirectory == null) throw new NullPointerException();
+		this.closing = false;
 		this.listener = new ServerSocket(PORT);
+		this.listener.setSoTimeout(ACCEPT_TIMEOUT);
 		this.rootDirectory = rootDirectory;
 		this.workers = new ThreadPoolExecutor(
 			DFL_CORE_THREADS,
@@ -56,8 +64,11 @@ public final class Server implements AutoCloseable {
 	 * Chiude il ListenSocket e il worker threads pool del server.
 	 */
 	public void close() throws Exception {
-		this.listener.close();
-		ThreadPoolUtils.shutdown(this.workers, MAX_DELAY_TIME, MAX_DELAY_UNIT);
+		if (!this.isClosing()) {
+			this.setClosing(true);
+			this.listener.close();
+			ThreadPoolUtils.shutdown(this.workers, MAX_DELAY_TIME, MAX_DELAY_UNIT);
+		}
 	}
 	
 	/**
@@ -65,11 +76,15 @@ public final class Server implements AutoCloseable {
 	 * @return Un Socket con cui scambiare dati con il client, null in caso di errore di I/O.
 	 */
 	public Socket accept() {
-		if (this.listener.isClosed()) return null;
-		try {
-			Socket result = this.listener.accept();
-			return result;
-		} catch (IOException ioe) { return null; }
+		while (true) {
+			try {
+				if (this.isClosing()) return null;
+				Socket result = this.listener.accept();
+				return result;
+			} catch (SocketTimeoutException ste){
+				if (this.isClosing()) return null;
+			} catch (IOException ioe) { return null; }
+		}
 	}
 	
 	public boolean handleRequest() throws IOException {
@@ -80,8 +95,7 @@ public final class Server implements AutoCloseable {
 			this.workers.execute(new FileTransfer(connection, this.rootDirectory));
 			return true;
 		} catch (RejectedExecutionException ree) { //For example if thread pool has been shutdown
-			if (connection.isClosed()) System.out.println("PIPPO");
-			connection.close();
+			if ((connection != null) && !connection.isClosed()) connection.close();
 			return false;
 		}
 	}

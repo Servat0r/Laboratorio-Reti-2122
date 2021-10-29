@@ -8,7 +8,6 @@ public class CtrlCHandler {
 				try {
 					System.out.println("Server closing");
 					server.close();
-					System.out.println("Server closed");
 				} catch (Exception e) {
 					System.out.println("An exception has occurred when closing server");
 					e.printStackTrace();
