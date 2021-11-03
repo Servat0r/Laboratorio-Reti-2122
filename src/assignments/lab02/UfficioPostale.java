@@ -1,6 +1,7 @@
 package assignments.lab02;
 
 import java.util.concurrent.*;
+
 import util.ThreadUtils;
 
 public final class UfficioPostale {

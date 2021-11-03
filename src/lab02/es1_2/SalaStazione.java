@@ -1,6 +1,7 @@
 package lab02.es1_2;
 
 import java.util.concurrent.*;
+
 import util.*;
 
 public final class SalaStazione {
