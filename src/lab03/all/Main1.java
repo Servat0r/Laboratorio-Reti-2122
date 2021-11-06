@@ -3,7 +3,7 @@ package lab03.all;
 import java.util.*;
 import java.util.concurrent.*;
 
-import util.ThreadPoolUtils;
+import util.threads.ThreadPoolUtils;
 
 public final class Main1 {
 

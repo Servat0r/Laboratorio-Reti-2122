@@ -3,7 +3,8 @@ package lab02.es3;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
-import util.ThreadPoolUtils;
+
+import util.threads.ThreadPoolUtils;
 
 /**
  * Esempio di classe per calcolare la somma n^A + ... + n^B, dove n è un numero reale e (A,B) è una coppia di

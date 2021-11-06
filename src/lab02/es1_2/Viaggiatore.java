@@ -3,6 +3,7 @@ package lab02.es1_2;
 import java.util.concurrent.ThreadLocalRandom;
 
 import util.*;
+import util.threads.ThreadUtils;
 
 public final class Viaggiatore implements Runnable {
 

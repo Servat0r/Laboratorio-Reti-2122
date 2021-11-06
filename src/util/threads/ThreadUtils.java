@@ -1,4 +1,4 @@
-package util;
+package util.threads;
 
 /**
  * Utilities for threads.

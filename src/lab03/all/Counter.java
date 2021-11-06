@@ -1,6 +1,6 @@
 package lab03.all;
 
-import util.ThreadUtils;
+import util.threads.ThreadUtils;
 
 /**
 * Counter modella il contatore

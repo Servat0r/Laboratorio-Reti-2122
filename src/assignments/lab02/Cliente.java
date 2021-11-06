@@ -2,7 +2,7 @@ package assignments.lab02;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import util.ThreadUtils;
+import util.threads.ThreadUtils;
 
 public final class Cliente implements Runnable {
 	

@@ -1,4 +1,4 @@
-package util;
+package util.threads;
 
 import java.util.concurrent.*;
 

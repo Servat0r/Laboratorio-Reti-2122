@@ -4,7 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.util.concurrent.*;
 
-import util.ThreadPoolUtils;
+import util.threads.ThreadPoolUtils;
 
 /**
  * Server per il trasferimento di file locali ai client.
