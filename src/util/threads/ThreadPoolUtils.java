@@ -11,6 +11,10 @@ public final class ThreadPoolUtils {
 	
 	private ThreadPoolUtils() {}
 	
+	public static int getProcNum() {
+		return Runtime.getRuntime().availableProcessors();
+	}
+	
 	public static void shutdown(ExecutorService service, int term_delay) {
 		service.shutdown();
 		try {
