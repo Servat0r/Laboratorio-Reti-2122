@@ -20,8 +20,8 @@ public final class CausaleCounter {
 		Map<Causale, Integer> counter = new HashMap<>();
 		for (Causale c : Causale.values()) counter.put(c, 0);
 		ExecutorService pool = new ThreadPoolExecutor(
-			4, //ThreadPoolUtils.getProcNum(),
-			4, //ThreadPoolUtils.getProcNum(),
+			ThreadPoolUtils.getProcNum(),
+			ThreadPoolUtils.getProcNum(),
 			0,
 			TimeUnit.MILLISECONDS,
 			new LinkedBlockingQueue<Runnable>(),
@@ -35,7 +35,7 @@ public final class CausaleCounter {
 		while (reader.hasNext()) {
 			BankAccount account = gson.fromJson(reader, BankAccount.class);
 			try {
-				pool.execute(new AccountCausaleCounter(counter, account));
+				pool.execute(new CountTask(counter, account));
 			} catch (RejectedExecutionException ree) {
 				System.out.println("Rejected Execution");
 				break;

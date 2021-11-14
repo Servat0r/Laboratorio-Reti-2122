@@ -2,13 +2,20 @@ package assignments.lab08;
 
 import java.util.*;
 import java.io.*;
+import java.lang.reflect.Type;
 import java.nio.*;
 import java.nio.channels.*;
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonWriter;
+
+import util.common.Common;
 
 public final class Bank {
 	
 	private List<BankAccount> accounts;
+	
+	private static int BYTE_BUFFER_CAPACITY = 1;
 		
 	public Bank() {
 		this.accounts = new ArrayList<>();
@@ -29,39 +36,63 @@ public final class Bank {
 	}
 	
 	public boolean addUser(String clientName) {
-		if (clientName == null) throw new NullPointerException();
+		Common.notNull(clientName);
 		if (this.isRegistered(clientName)) return false;
 		this.accounts.add(new BankAccount(clientName));
 		return true;
 	}
 	
 	public boolean addTransfer(String clientName, Date date, Causale causale) {
-		if (clientName == null || date == null || causale == null) throw new NullPointerException();
+		Common.notNull(clientName); Common.notNull(date); Common.notNull(causale);
 		if (!this.isRegistered(clientName)) return false;
 		BankAccount account = this.getAccountByName(clientName);
 		return account.addTransfer(date, causale);
 	}
-	
-	public void printToFile(String filename) throws IOException {
-		if (filename == null) throw new NullPointerException();
+		
+	public void printToFile_NIO(String filename) throws IOException {
+		Common.notNull(filename);
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		File file = new File(filename);
+		file.createNewFile();
 		WritableByteChannel fc = Channels.newChannel(new FileOutputStream(file));
-		ByteBuffer buffer = ByteBuffer.wrap(this.toJSON().getBytes()); //ByteBuffer.allocate(BYTE_BUFFER_CAPACITY);
-		//TODO Modificare per gestire grossi file in RAM
-		while (buffer.hasRemaining()) fc.write(buffer);
+		ByteBuffer buffer = ByteBuffer.allocate(BYTE_BUFFER_CAPACITY);
+		buffer.put((byte)'[');
+		buffer.flip();
+		fc.write(buffer);
+		buffer.clear();
+		for (int i = 0; i < this.accounts.size(); i++) {
+			if (i != 0) {
+				buffer.put((byte)',');
+				buffer.flip();
+				while (buffer.hasRemaining()) fc.write(buffer);
+				buffer.clear();
+			}
+			ByteBuffer buffer2 = ByteBuffer.wrap(gson.toJson(this.accounts.get(i)).getBytes());
+			while (buffer2.hasRemaining()) fc.write(buffer2);
+		}
+		buffer.put((byte)']');
+		buffer.flip();
+		fc.write(buffer);
+		buffer.clear();
 		fc.close();
 	}
 	
-	public String toJSON() {
+	public void printToFile_IO(String filename) throws IOException {
+		Common.notNull(filename);
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		StringBuilder sb = new StringBuilder();
-		sb.append("[");
-		for (int i = 0; i < this.accounts.size(); i++) {
-			if (i != 0) { sb.append(","); }
-			sb.append(gson.toJson(this.accounts.get(i)));
+		File file = new File(filename);
+		file.createNewFile();
+		FileOutputStream fout = new FileOutputStream(file);
+		JsonWriter writer = new JsonWriter(new OutputStreamWriter(fout));
+		writer.setIndent("  ");
+		writer.beginArray();
+		Type bankAccountType = new TypeToken<BankAccount>() {}.getType();
+		for (BankAccount account : this.accounts) {
+			gson.toJson(account, bankAccountType, writer);
 		}
-		sb.append("]");
-		return sb.toString();
-		//return gson.toJson(this);
+		writer.endArray();
+		writer.close();
+		fout.close();
 	}
+	
 }

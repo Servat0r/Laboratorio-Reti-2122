@@ -2,12 +2,14 @@ package assignments.lab08;
 
 import java.util.*;
 
+import util.common.Common;
+
 public final class BankAccount {
 	private String name;
 	private List<Transfer> transfers;
 	
 	public BankAccount(String name) {
-		if (name == null) throw new NullPointerException();
+		Common.notNull(name);
 		this.name = name;
 		this.transfers = new ArrayList<Transfer>();
 	}
@@ -17,18 +19,16 @@ public final class BankAccount {
 	}
 
 	public final void setName(String name) {
+		Common.notNull(name);
 		this.name = name;
 	}
 	
 	public final List<Transfer> getTransfers() {
 		return this.transfers;
-		//List<Transfer> tlist = new ArrayList<>();
-		//for (Transfer t : tlist) tlist.add(t);
-		//return tlist;
 	}
 
 	public final boolean addTransfer(Date date, Causale causale) {
-		if (date == null || causale == null) throw new NullPointerException();
+		Common.notNull(date); Common.notNull(causale);
 		return this.transfers.add(new Transfer(date, causale));
 	}
 	

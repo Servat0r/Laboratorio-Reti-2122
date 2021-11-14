@@ -5,12 +5,12 @@ import java.util.*;
 import util.common.Common;
 
 //Contatore del tipo delle causali
-public final class AccountCausaleCounter implements Runnable {
+public final class CountTask implements Runnable {
 
 	private Map<Causale, Integer> counter;
 	private BankAccount account;
 	
-	public AccountCausaleCounter(Map<Causale, Integer> counter, BankAccount account) {
+	public CountTask(Map<Causale, Integer> counter, BankAccount account) {
 		Common.notNull(account);
 		Common.notNull(counter);
 		this.counter = counter;
