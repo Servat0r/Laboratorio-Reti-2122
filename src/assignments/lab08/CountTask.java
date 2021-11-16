@@ -4,7 +4,10 @@ import java.util.*;
 
 import util.common.Common;
 
-//Contatore del tipo delle causali
+/**
+ * Task di conteggio della frequenza delle varie causali in un conto corrente.
+ * @author Salvatore Correnti
+ */
 public final class CountTask implements Runnable {
 
 	private Map<Causale, Integer> counter;

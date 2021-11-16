@@ -18,7 +18,7 @@ public final class ThreadPoolUtils {
 	public static void shutdown(ExecutorService service, int term_delay) {
 		service.shutdown();
 		try {
-			if (!service.awaitTermination(term_delay, TimeUnit.MILLISECONDS)) {
+			if ((term_delay > 0) && !service.awaitTermination(term_delay, TimeUnit.MILLISECONDS)) {
 				service.shutdownNow();
 			}
 		} catch (InterruptedException ie) {
@@ -29,7 +29,7 @@ public final class ThreadPoolUtils {
 	public static void shutdown(ExecutorService service, int term_delay, TimeUnit unit) {
 		service.shutdown();
 		try {
-			if (!service.awaitTermination(term_delay, unit)) {
+			if ((term_delay > 0) && !service.awaitTermination(term_delay, unit)) {
 				service.shutdownNow();
 			}
 		} catch (InterruptedException ie) {

@@ -4,6 +4,10 @@ import java.util.*;
 
 import util.common.Common;
 
+/**
+ * Account della banca, contenente il nome utente e una lista di movimenti effettuati.
+ * @author Salvatore Correnti.
+ */
 public final class BankAccount {
 	private String name;
 	private List<Transfer> transfers;
@@ -36,6 +40,5 @@ public final class BankAccount {
 		StringBuilder sb = new StringBuilder();
 		for (Transfer t : this.transfers) sb.append(t.toString() + "\n");
 		return "BankAccount[" + this.name + " {\n" + sb.toString() + "}\n]";
-	}
-	
+	}	
 }
