@@ -1,6 +1,9 @@
 package assignments.lab08;
 
 import java.util.*;
+import java.util.concurrent.*;
+
+import util.common.Common;
 
 public final class Main {
 
@@ -58,19 +61,24 @@ public final class Main {
 		Bank bank = new Bank();
 		String filename = (args.length > 0 ? args[0] : DFL_FNAME);
 		Causale[] causals = Causale.values();
+		int A = 0;
 		for (String client : clients) {
 			bank.addUser(client);
 			int ntr = MIN_TRANSFERS + r.nextInt(MAX_TRANSFERS - MIN_TRANSFERS + 1);
+			System.out.printf("Numero di movimenti per %s = %d%n", client, ntr);
 			for (int i = 0; i < ntr; i++) {
-				bank.addTransfer(client, Main.nextDate(),causals[s.nextInt(causals.length)]);
+				bank.addTransfer(client, Main.nextDate(), causals[s.nextInt(causals.length)]);
 			}
+			A += ntr;
 		}
+		System.out.println("Totale movimenti = " + A);
 		try {
 			bank.printToFile_NIO(filename); /* Creazione del file JSON con java.nio . */
-			Map<Causale, Integer> counter = CausaleCounter.count(filename);
+			ConcurrentMap<Causale, Integer> counter = CausaleCounter.count(filename);
 			System.out.println("RISULTATO:");
+			System.out.println("\tTotale movimenti analizzati = " + Common.sum(counter));
 			for (Causale c : counter.keySet()) {
-				System.out.printf("\t%s : %d occorrenze%n", c.toString(), counter.get(c));
+				System.out.printf("\t%s = %d occorrenze%n", c.toString(), counter.get(c));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

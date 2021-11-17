@@ -1,7 +1,6 @@
 package assignments.lab08;
 
 import java.io.*;
-import java.util.*;
 import java.util.concurrent.*;
 import com.google.gson.*;
 import com.google.gson.stream.*;
@@ -17,11 +16,8 @@ public final class CausaleCounter {
 	
 	private CausaleCounter() {}
 	
-	/* Massimo termine di attesa prima della chiusura forzata del thread pool. In tal caso (0)
-	 * per definizione di ThreadPoolUtils.shutdown() NON vi è timeout, quindi la chiamata finale
-	 * equivarrà a uno shutdown() normale del pool.
-	 */
-	private static final int COUNT_TERM_DELAY = 0;
+	/* Massimo termine di attesa prima della chiusura forzata del thread pool. */
+	private static final int COUNT_TERM_DELAY = 10_000;
 
 	/**
 	 * Legge un file JSON contenente un array di conti correnti e per ogni Causale c calcola il numero di movimenti
@@ -30,14 +26,14 @@ public final class CausaleCounter {
 	 * @return Una mappa da Causale a intero in caso di successo, null altrimenti.
 	 * @throws Exception In caso di errore.
 	 */
-	public static Map<Causale, Integer> count(String filename) throws Exception {
+	public static ConcurrentMap<Causale, Integer> count(String filename) throws Exception {
 		Common.notNull(filename);
 		Causale[] c = Causale.values();
 		Integer[] v = Common.newIntegerArray(c.length, 0);
 		/* La mappa sottostante al termine dell'esecuzione sarà tale che per
 		 * ogni c in Causale : counter.get(c) == #{movimenti con quella causale}.
 		 */
-		Map<Causale, Integer> counter = Common.newHashMapFromArrays(c, v);
+		ConcurrentMap<Causale, Integer> counter = Common.newConcurrentHashMapFromArrays(c, v);
 		ExecutorService pool = new ThreadPoolExecutor(
 			ThreadPoolUtils.getProcNum(), /* Numero dei processori logici disponibili (valore consigliato per il numero di core-threads) */
 			ThreadPoolUtils.getProcNum(),

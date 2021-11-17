@@ -1,6 +1,7 @@
 package util.common;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Operazioni e metodi comuni.
@@ -19,8 +20,20 @@ public final class Common {
 		return result;
 	}
 	
+	public static int sum(Collection<Integer> coll) {
+		int s = 0;
+		for (Integer i : coll) s += i;
+		return s;
+	}
+	
+	public static <K> int sum(ConcurrentMap<K, Integer> map){
+		int s = 0;
+		synchronized (map) { for (Integer v : map.values()) s += v; }
+		return s;
+	}
+	
 	/**
-	 * Crea una nuova HashMap da una coppia di array della stessa lunghezza associando per ogni i l'i-esimo elemento del primo array all'i-esimo
+	 * Crea una nuova ConcurrentHashMap da una coppia di array della stessa lunghezza associando per ogni i l'i-esimo elemento del primo array all'i-esimo
 	 * elemento del secondo.
 	 * @param <K> Tipo delle chiavi della HashMap.
 	 * @param <V> Tipo dei valori della HashMap.
@@ -28,10 +41,10 @@ public final class Common {
 	 * @param values Valori della HashMap.
 	 * @return Una HashMap come già descritta in caso di successo, null altrimenti.
 	 */
-	public static <K,V> Map<K, V> newHashMapFromArrays(K[] keys, V[] values){
+	public static <K,V> ConcurrentMap<K, V> newConcurrentHashMapFromArrays(K[] keys, V[] values){
 		if (keys.length != values.length) return null;
 		int size = keys.length;
-		Map<K,V> map = new HashMap<>();
+		ConcurrentMap<K,V> map = new ConcurrentHashMap<>();
 		for (int i = 0; i < size; i++) map.put(keys[i], values[i]);
 		return map;
 	}
