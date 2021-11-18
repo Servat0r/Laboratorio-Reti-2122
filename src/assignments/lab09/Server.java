@@ -12,6 +12,8 @@ public class Server implements AutoCloseable {
 	
 	private static final int BYTE_BUF_CAP = 1024; //1KB
 	
+	private static final String ECHO_STR = " echoed by server";
+	
 	private static enum State {
 		OPEN,
 		CLOSED,
@@ -41,11 +43,11 @@ public class Server implements AutoCloseable {
 
 	private synchronized boolean isClosed() { return (this.state == State.CLOSED); }
 	
-	private void cancelKey(SelectionKey key) throws IOException {
+	private void closeConnection(SelectionKey key) throws IOException {
 		key.cancel();
 		key.channel().close();
 	}
-	
+		
 	public boolean run() {
 		while (!this.isClosed()) {
 			
@@ -65,35 +67,29 @@ public class Server implements AutoCloseable {
 						SocketChannel client = server.accept();
 						System.out.println("Accepted connection from " + client);
 						client.configureBlocking(false);
-						/* Va registrata un'UNICA chiave per non confondere messaggi in entrata da e in uscita verso il client */
 						SelectionKey clientKey = client.register(selector, SelectionKey.OP_READ);
-						MessageBuffer buffer = new MessageBuffer(BYTE_BUF_CAP);
-						clientKey.attach(buffer);
+						MessageBuffer[] buffers = new MessageBuffer[] {new MessageBuffer(BYTE_BUF_CAP), new MessageBuffer(ECHO_STR.length())};
+						buffers[1].readFromArray(ECHO_STR.getBytes(), 0, ECHO_STR.length());
+						clientKey.attach(buffers);
 					} else {
 						SocketChannel client = (SocketChannel) key.channel();
-						MessageBuffer buffer = (MessageBuffer) key.attachment();
-						if (key.isReadable()) {
-							int r = buffer.readFromChannel(client);
-							if (r == -1) {
-								buffer.clear();
-								key.interestOps(SelectionKey.OP_WRITE);
-								byte[] ackBytes = "ACKNOWLEDGED".getBytes();
-								buffer.readFromArray(ackBytes, 0, ackBytes.length);
-							} else {
-								byte[] rawData = new byte[BYTE_BUF_CAP];
-								int len = buffer.writeToArray(rawData, 0, BYTE_BUF_CAP);
-								System.out.print(new String(rawData, 0, len));
-							}
+						MessageBuffer[] buffers = (MessageBuffer[]) key.attachment();
+						if (key.isReadable() && key.isWritable()) {
+							if (buffers[0].hasRemaining()) buffers[0].writeToChannel(client);
+							if (buffers[0].readFromChannel(client) == -1) key.interestOps(SelectionKey.OP_WRITE);
+						} else if (key.isReadable()) {
+							if (buffers[0].readFromChannel(client) == -1) key.interestOps(SelectionKey.OP_WRITE);
+							else key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
 						} else if (key.isWritable()) {
-							if (buffer.hasRemaining()) buffer.writeToChannel(client);
+							if (buffers[0].hasRemaining()) buffers[0].writeToChannel(client);
+							else if (buffers[1].hasRemaining()) buffers[1].writeToChannel(client);
 							else {
-								System.out.println();
-								try { cancelKey(key); } catch (IOException ioex) { return false; }
+								try { closeConnection(key); } catch (IOException ioex) { return false; }
 							}
 						}
 					}
 				} catch (IOException | NotYetConnectedException ex) {
-					try { cancelKey(key); } catch (IOException cex) { return false; }
+					try { closeConnection(key); } catch (IOException cex) { return false; }
 				}
 			} /* iterator.hasNext() */
 			

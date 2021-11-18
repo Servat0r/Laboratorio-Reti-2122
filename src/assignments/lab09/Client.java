@@ -50,7 +50,7 @@ public class Client implements AutoCloseable {
 			this.recvBuf.get(recvBytes, 0, this.recvBuf.remaining());
 			this.recvBuf.clear();
 		}
-		return r; //Che indicherà quanti elementi significativi ci sono in recvBytes!
+		return r; /* Che indicherà quanti elementi significativi ci sono in recvBytes! */
 	}
 	
 	public boolean run() {
@@ -59,14 +59,13 @@ public class Client implements AutoCloseable {
 				ReadableByteChannel inCh = Channels.newChannel( new ByteArrayInputStream( s.nextLine().getBytes() ) )
 		){
 			while (this.nextSend(inCh) > -1) {}
-			this.client.shutdownOutput(); //Il client non invierà più dati!
 			byte[] recvbytes = new byte[BYTE_BUF_CAP];
 			int recvlen;
 			while ((recvlen = this.nextRecv(recvbytes)) > -1) {
 				System.out.print(new String(recvbytes, 0, recvlen));
 				Arrays.fill(recvbytes, (byte)0);
 			}
-			this.client.shutdownInput();
+			System.out.println();
 			this.client.close();
 		} catch (Exception ex) {
 			ex.printStackTrace();
