@@ -22,7 +22,7 @@ public final class Common {
 	
 	public static int sum(Collection<Integer> coll) {
 		int s = 0;
-		for (Integer i : coll) s += i;
+		synchronized (coll) { for (Integer i : coll) s += i; }
 		return s;
 	}
 	
@@ -31,7 +31,7 @@ public final class Common {
 		synchronized (map) { for (Integer v : map.values()) s += v; }
 		return s;
 	}
-	
+		
 	/**
 	 * Crea una nuova ConcurrentHashMap da una coppia di array della stessa lunghezza associando per ogni i l'i-esimo elemento del primo array all'i-esimo
 	 * elemento del secondo.
