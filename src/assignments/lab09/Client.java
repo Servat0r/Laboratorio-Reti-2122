@@ -1,21 +1,19 @@
 package assignments.lab09;
 
 import java.nio.channels.*;
-import java.util.Arrays;
-import java.util.Scanner;
+import java.util.*;
 
 import util.common.*;
 
 import java.net.*;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
+import java.io.*;
 
 public class Client implements AutoCloseable {
 	
 	public static final String DFL_HOST = "localhost";
 	public static final int DFL_PORT = 1919;
 	
-	public static final int BYTE_BUF_CAP = 4; //1024;
+	public static final int BYTE_BUF_CAP = 1024;
 	
 	private SocketChannel client;
 	private MessageBuffer msgBuf;
@@ -50,11 +48,13 @@ public class Client implements AutoCloseable {
 		return r;
 	}
 		
-	public boolean run() {
-		try (
+	public boolean run(ReadableByteChannel input) {
+/*		try (
 				Scanner s = new Scanner(System.in);
 				ReadableByteChannel input = Channels.newChannel( new ByteArrayInputStream( s.nextLine().getBytes() ) )
 		){
+*/
+		try {
 			int sent = 0;
 			while (true) {
 				int ret = this.nextSend(input);
@@ -70,7 +70,6 @@ public class Client implements AutoCloseable {
 				}
 				System.out.println();
 			}
-			this.client.close();
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			return false;

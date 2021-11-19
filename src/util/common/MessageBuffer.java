@@ -51,6 +51,19 @@ public final class MessageBuffer {
 		} else throw new IllegalStateException();
 	}
 	
+	public Byte get(boolean compact) {
+		if (this.state == State.INIT) return null;
+		else if (this.state == State.WRITTEN) {
+			this.buffer.flip();
+			this.state = State.READ;
+		}
+		Byte result = (this.hasRemaining() ? this.buffer.get() : null);
+		if (compact) this.compact();
+		return result;
+	}
+	
+	public Byte get() { return this.get(true); }
+			
 	/**
 	 * Legge dati da un SocketChannel trasferendoli nel buffer interno e pone lo stato a State.WRITTEN .
 	 * @param sc SocketChannel da cui leggere i dati.
