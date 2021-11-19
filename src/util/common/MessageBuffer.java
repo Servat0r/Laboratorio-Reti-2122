@@ -58,7 +58,7 @@ public final class MessageBuffer {
 	 * @throws NotYetConnectedException Se lanciata da sc.read().
 	 * @throws IOException Se lanciata da sc.read().
 	 */
-	public int readFromChannel(SocketChannel sc) throws NotYetConnectedException, IOException {
+	public int readFromChannel(ReadableByteChannel sc) throws NotYetConnectedException, IOException {
 		Common.notNull(sc);
 		int result = 0;
 		if (this.state == State.READ) {
@@ -79,7 +79,7 @@ public final class MessageBuffer {
 	 * @return Il numero di bytes scritti se lo stato è diverso da State.INIT, -1 altrimenti.
 	 * @throws IOException Se lanciata da sc.write() (e.g. in caso di chiusura del canale).
 	 */
-	public int writeToChannel(SocketChannel sc, boolean compact) throws IOException {
+	public int writeToChannel(WritableByteChannel sc, boolean compact) throws IOException {
 		Common.notNull(sc);
 		int result = 0;
 		if (this.state == State.INIT) result = -1; /* Non c'è niente da scrivere! */
@@ -92,7 +92,7 @@ public final class MessageBuffer {
 		return result;
 	}
 	
-	public int writeToChannel(SocketChannel sc) throws IOException { return this.writeToChannel(sc, true); }
+	public int writeToChannel(WritableByteChannel sc) throws IOException { return this.writeToChannel(sc, true); }
 	
 	/**
 	 * Copia i dati contenuti nel buffer in un array di bytes, SENZA modificare lo stato del buffer né il suo contenuto.
@@ -100,7 +100,7 @@ public final class MessageBuffer {
 	 * lo stato è READ), null altrimenti.
 	 */
 	public byte[] getAllData() {
-		if (this.state == State.INIT) return null;
+		if (this.state == State.INIT) return new byte[0];
 		else {
 			byte[] result;
 			int position = this.buffer.position();

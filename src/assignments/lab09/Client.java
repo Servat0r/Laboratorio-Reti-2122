@@ -1,11 +1,10 @@
 package assignments.lab09;
 
-import java.nio.*;
 import java.nio.channels.*;
 import java.util.Arrays;
 import java.util.Scanner;
 
-import util.common.Common;
+import util.common.*;
 
 import java.net.*;
 import java.io.ByteArrayInputStream;
@@ -16,56 +15,61 @@ public class Client implements AutoCloseable {
 	public static final String DFL_HOST = "localhost";
 	public static final int DFL_PORT = 1919;
 	
-	public static final int BYTE_BUF_CAP = 1024;
+	public static final int BYTE_BUF_CAP = 4; //1024;
 	
 	private SocketChannel client;
-	private ByteBuffer sendBuf;
-	private ByteBuffer recvBuf;
+	private MessageBuffer msgBuf;
 	
 	public Client(String host, int port) throws IOException {
 		Common.notNull(host);
 		if (port <= 0) throw new IllegalArgumentException();
 		SocketAddress address = new InetSocketAddress(host, port);
 		this.client = SocketChannel.open(address);
-		this.sendBuf = ByteBuffer.allocate(BYTE_BUF_CAP);
-		this.recvBuf = ByteBuffer.allocate(BYTE_BUF_CAP);
+		this.msgBuf = new MessageBuffer(BYTE_BUF_CAP);
 	}
 	
 	public Client() throws IOException { this(DFL_HOST, DFL_PORT); }
 	
-	private int nextSend(ReadableByteChannel inCh) throws IOException {
-		int r = inCh.read(this.sendBuf);
+	private int nextSend(ReadableByteChannel input) throws IOException {
+		int r = this.msgBuf.readFromChannel(input);
 		if (r >= 0) {
-			this.sendBuf.flip();
-			while (this.sendBuf.hasRemaining()) this.client.write(this.sendBuf);
-			this.sendBuf.clear();
+			while (this.msgBuf.hasRemaining()) this.msgBuf.writeToChannel(this.client);
+			this.msgBuf.clear();
 		}
 		return r;
 	}
 	
 	private int nextRecv(byte[] recvBytes) throws IOException {
-		int r = this.client.read(this.recvBuf);
+		int r = this.msgBuf.readFromChannel(this.client);
 		if (r >= 0) {
-			this.recvBuf.flip();
-			this.recvBuf.get(recvBytes, 0, this.recvBuf.remaining());
-			this.recvBuf.clear();
+			int offset = 0;
+			while (this.msgBuf.hasRemaining()) {
+				offset += this.msgBuf.writeToArray(recvBytes, offset, r);
+			}
 		}
-		return r; /* Che indicherà quanti elementi significativi ci sono in recvBytes! */
+		return r;
 	}
-	
+		
 	public boolean run() {
 		try (
 				Scanner s = new Scanner(System.in);
-				ReadableByteChannel inCh = Channels.newChannel( new ByteArrayInputStream( s.nextLine().getBytes() ) )
+				ReadableByteChannel input = Channels.newChannel( new ByteArrayInputStream( s.nextLine().getBytes() ) )
 		){
-			while (this.nextSend(inCh) > -1) {}
-			byte[] recvbytes = new byte[BYTE_BUF_CAP];
-			int recvlen;
-			while ((recvlen = this.nextRecv(recvbytes)) > -1) {
-				System.out.print(new String(recvbytes, 0, recvlen));
-				Arrays.fill(recvbytes, (byte)0);
+			int sent = 0;
+			while (true) {
+				int ret = this.nextSend(input);
+				if (ret < 0) break;
+				else sent += ret;
 			}
-			System.out.println();
+			if (sent > 0) {
+				byte[] recvbytes = new byte[BYTE_BUF_CAP];
+				int recvlen;
+				while ((recvlen = this.nextRecv(recvbytes)) > -1) {
+					System.out.print(new String(recvbytes, 0, recvlen));
+					Arrays.fill(recvbytes, (byte)0);
+				}
+				System.out.println();
+			}
 			this.client.close();
 		} catch (Exception ex) {
 			ex.printStackTrace();
