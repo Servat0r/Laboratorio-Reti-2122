@@ -13,6 +13,10 @@ public final class Common {
 	
 	public static void notNull(Object obj) { if (obj == null) throw new NullPointerException(); }
 	
+	public static void positive(int n) { if (n <= 0) throw new IllegalArgumentException(); }
+	
+	public static void notNeg(int n) {if (n < 0) throw new IllegalArgumentException(); }
+	
 	public static Integer[] newIntegerArray(int length, int defValue) {
 		if (length <= 0) throw new IllegalArgumentException(); 
 		Integer[] result = new Integer[length];
@@ -39,7 +43,7 @@ public final class Common {
 	 * @param <V> Tipo dei valori della HashMap.
 	 * @param keys Chiavi della HashMap.
 	 * @param values Valori della HashMap.
-	 * @return Una HashMap come già descritta in caso di successo, null altrimenti.
+	 * @return Una HashMap come giï¿½ descritta in caso di successo, null altrimenti.
 	 */
 	public static <K,V> ConcurrentMap<K, V> newConcurrentHashMapFromArrays(K[] keys, V[] values){
 		if (keys.length != values.length) return null;

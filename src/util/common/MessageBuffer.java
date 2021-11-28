@@ -36,10 +36,10 @@ public final class MessageBuffer {
 	}
 	
 	/**
-	 * Se è appena stata compiuta una scrittura nel buffer, trasla i dati contenuti in [position, limit) in [0, limit-position),
-	 * dopodiché, a differenza di {@link ByteBuffer#compact()}, setta limit = limit-position e position = 0.
-	 * @return true se l'operazione è completata con successo, false se lo stato è diverso da State.READ o l'operazione
-	 * non è completata con successo.
+	 * Se Ã¨ appena stata compiuta una scrittura nel buffer, trasla i dati contenuti in [position, limit) in [0, limit-position),
+	 * dopodichÃ©, a differenza di {@link ByteBuffer#compact()}, setta limit = limit-position e position = 0.
+	 * @return true se l'operazione Ã¨ completata con successo, false se lo stato Ã¨ diverso da State.READ o l'operazione
+	 * non Ã¨ completata con successo.
 	 */
 	public boolean compact() {
 		if (this.state == State.INIT) return false;
@@ -89,13 +89,13 @@ public final class MessageBuffer {
 	 * @param sc SocketChannel su cui scrivere i dati.
 	 * @param compact Se true al termine della scrittura viene eseguita una this.compact(),
 	 * altrimenti non viene eseguito nulla.
-	 * @return Il numero di bytes scritti se lo stato è diverso da State.INIT, -1 altrimenti.
+	 * @return Il numero di bytes scritti se lo stato Ã¨ diverso da State.INIT, -1 altrimenti.
 	 * @throws IOException Se lanciata da sc.write() (e.g. in caso di chiusura del canale).
 	 */
 	public int writeToChannel(WritableByteChannel sc, boolean compact) throws IOException {
 		Common.notNull(sc);
 		int result = 0;
-		if (this.state == State.INIT) result = -1; /* Non c'è niente da scrivere! */
+		if (this.state == State.INIT) result = -1; /* Non c'ï¿½ niente da scrivere! */
 		else { 
 			if (this.state == State.WRITTEN) this.buffer.flip(); //position = 0, limit = old_position
 			this.state = State.READ; /* Indipendentemente dal risultato della write! */
@@ -108,9 +108,9 @@ public final class MessageBuffer {
 	public int writeToChannel(WritableByteChannel sc) throws IOException { return this.writeToChannel(sc, true); }
 	
 	/**
-	 * Copia i dati contenuti nel buffer in un array di bytes, SENZA modificare lo stato del buffer né il suo contenuto.
-	 * @return Un array di bytes contenente i dati del buffer ([0, position) se lo stato è WRITTEN, [position, limit) se
-	 * lo stato è READ), null altrimenti.
+	 * Copia i dati contenuti nel buffer in un array di bytes, SENZA modificare lo stato del buffer nÃ© il suo contenuto.
+	 * @return Un array di bytes contenente i dati del buffer ([0, position) se lo stato Ã¨ WRITTEN, [position, limit) se
+	 * lo stato Ã¨ READ), null altrimenti.
 	 */
 	public byte[] getAllData() {
 		if (this.state == State.INIT) return new byte[0];
@@ -132,11 +132,11 @@ public final class MessageBuffer {
 	}
 	
 	/**
-	 * Legge al più length bytes da array partendo da offset e pone lo stato a WRITTEN.
+	 * Legge al piÃ¹ length bytes da array partendo da offset e pone lo stato a WRITTEN.
 	 * @param array Array di bytes da cui leggere i dati.
 	 * @param offset Prima posizione in array da cui leggere i dati.
 	 * @param length Massimo numero di bytes leggibili dall'array (nei limiti
-	 * della capacità del buffer e della lunghezza dell'array).
+	 * della capacitÃ  del buffer e della lunghezza dell'array).
 	 * @return Il numero di bytes copiati nel buffer.
 	 */
 	public int readFromArray(byte[] array, int offset, int length) {
@@ -156,9 +156,9 @@ public final class MessageBuffer {
 	}
 	
 	/**
-	 * Scrive i dati contenuti nel buffer ([0, position) se lo stato è WRITTEN,
-	 * [position, limit) se lo stato è READ) nell'array passato dalla posizione
-	 * offset per al più length bytes, ed eventualmente compatta i dati rimanenti
+	 * Scrive i dati contenuti nel buffer ([0, position) se lo stato Ã¨ WRITTEN,
+	 * [position, limit) se lo stato Ã¨ READ) nell'array passato dalla posizione
+	 * offset per al piÃ¹ length bytes, ed eventualmente compatta i dati rimanenti
 	 * alla fine oppure rimette position al valore iniziale.
 	 * @param array Array di bytes in cui scrivere i dati.
 	 * @param offset Prima posizione in array su cui scrivere.
@@ -166,7 +166,7 @@ public final class MessageBuffer {
 	 * lunghezza di array e del buffer).
 	 * @param compact Se true, al termine della scrittura compatta il buffer eliminando
 	 * i dati scritti in array, altrimenti ripristina position al valore iniziale.
-	 * @return Il numero di bytes scritti se lo stato è diverso da INIT, -1 altrimenti.
+	 * @return Il numero di bytes scritti se lo stato Ã¨ diverso da INIT, -1 altrimenti.
 	 */
 	public int writeToArray(byte[] array, int offset, int length, boolean compact) {
 		Common.notNull(array);
@@ -175,17 +175,11 @@ public final class MessageBuffer {
 		if (this.state == State.INIT) return -1;
 		else if (this.state == State.WRITTEN) this.buffer.flip();
 		this.state = State.READ;
-		int position = this.buffer.position();
 		int copied = 0;
 		try {
 			while (copied < maxCopy) { array[copied + offset] = this.buffer.get(); copied++; }
 		} catch (BufferUnderflowException bue) {}
 		if (compact) this.compact();
-		//TODO Eliminare il ramo else? Oppure usare dei flag?
-		else {
-			this.buffer.rewind();
-			this.buffer.position(position);
-		}
 		return copied;
 	}
 
@@ -213,6 +207,18 @@ public final class MessageBuffer {
 	 * @return true sse this.remaining() > 0.
 	 */
 	public boolean hasRemaining() { return (this.remaining() > 0); }
+	
+	/**
+	 * Prepares the buffer for a new reading operation, starting from 0 to the current limit.
+	 */
+	public void rewind() {
+		if (this.state == State.READ) {
+			this.buffer.rewind();
+		} else if (this.state == State.WRITTEN) {
+			this.buffer.flip();
+			this.state = State.READ;
+		}
+	}
 	
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
